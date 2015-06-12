@@ -8,14 +8,17 @@ from theano import tensor as TT
 
 
 class NodeVectorModel(object):
-    def __init__(self, ne, de, y_max=100, alpha=0.75):
+    def __init__(self, ne, de, y_max=100, alpha=0.75, seed=1692):
         """
         ne :: number of word embeddings in the vocabulary
         de :: dimension of the word embeddings
         """
         # parameters of the model
+        np.random.seed(seed)
         self.Win = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (ne, de)).astype(theano.config.floatX))
         self.Wout = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (ne, de)).astype(theano.config.floatX))
+
+        self.alpha = alpha
 
         # bundle
         self.params = [self.Win, self.Wout]
@@ -38,16 +41,18 @@ class NodeVectorModel(object):
 
         # cost and gradients and learning rate
         learning_rate = TT.scalar('lr')
-        negative_loss = -TT.mean(fy * TT.square(y_predictions - TT.log(y)))
-        gradients = TT.grad(negative_loss, self.params)
+        loss = TT.mean(fy * TT.square(y_predictions - TT.log(y)))
+        gradients = TT.grad(loss, self.params)
         updates = OrderedDict((p, p - learning_rate * g) for p, g in zip(self.params, gradients))
 
         # theano functions
+        self.calculate_cost = theano.function(inputs=[idxs, y], outputs=loss)
         self.classify = theano.function(inputs=[idxs], outputs=y_predictions)
-        self._train = theano.function(
+        self.train = theano.function(
             inputs=[idxs, y, learning_rate],
-            outputs=negative_loss,
-            updates=updates
+            outputs=loss,
+            updates=updates,
+            name='training_fn'
         )
 
         self.normalize = theano.function(
