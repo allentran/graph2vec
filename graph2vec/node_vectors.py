@@ -27,24 +27,21 @@ class NodeVectorModel(object):
         idxs = TT.imatrix()
         xIn = self.Win[idxs[:, 0], :]
         xOut = self.Wout[idxs[:, 1], :]
-        n_pairs = xIn.shape[0]
 
         y = TT.vector('y')  # label
         y_predictions = TT.sum(xIn * xOut, axis=1)
-        # y_predictions, _ = theano.scan(
-        #     fn=lambda idx, x_in, x_out: x_in[idx, :].dot(x_out.T),
-        #     sequences=TT.arange(n_pairs),
-        #     outputs_info=None,
-        #     non_sequences=[xIn, xOut],
-        # )
 
         fy = (y / y_max) ** alpha
 
         # cost and gradients and learning rate
         learning_rate = TT.scalar('lr')
         loss = TT.mean(fy * TT.square(y_predictions - TT.log(y)))
-        gradients = TT.grad(loss, self.params)
-        updates = OrderedDict((p, p - learning_rate * g) for p, g in zip(self.params, gradients))
+        gradients = TT.grad(loss, [xIn, xOut])
+
+        updates = [
+            (self.Win, TT.inc_subtensor(self.Win[idxs[:, 0]], -learning_rate*gradients[0])),
+            (self.Wout, TT.inc_subtensor(self.Wout[idxs[:, 1]], -learning_rate*gradients[1])),
+        ]
 
         # theano functions
         self.calculate_cost = theano.function(inputs=[idxs, y], outputs=loss)
