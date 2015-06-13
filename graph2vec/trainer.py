@@ -26,7 +26,7 @@ class Node2Vec(object):
 
         with open(graph_path, 'r') as graph_file:
             for line in graph_file:
-                parsed_line = line.split(' ')
+                parsed_line = line.strip().split(' ')
                 if len(parsed_line) in [2, 3]:
                     first = int(parsed_line[0])
                     second = int(parsed_line[1])
@@ -44,7 +44,6 @@ class Node2Vec(object):
         self.from_to_idxs = np.array(self.from_to_idxs).astype(np.int32)
 
     def fit(self, max_epochs=100, seed=1692):
-
         self.model = NodeVectorModel(
             ne=self.n,
             de=self.dimensions
@@ -59,10 +58,11 @@ class Node2Vec(object):
             seed = random.randint(0, 1e5)
 
             for obs_idx in xrange(self.n):
+                print obs_idx
                 self.model.train(self.from_to_idxs[obs_idx, None], self.data[obs_idx, None], 0.05)
                 self.model.normalize()
             print self.model.calculate_cost(self.from_to_idxs, self.data)
 
 if __name__ == "__main__":
-    node2vec = Node2Vec(graph_path="data/test.data", vector_dimensions=100)
+    node2vec = Node2Vec(graph_path="data/edge.list", vector_dimensions=100)
     node2vec.fit()

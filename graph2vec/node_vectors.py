@@ -30,12 +30,13 @@ class NodeVectorModel(object):
         n_pairs = xIn.shape[0]
 
         y = TT.vector('y')  # label
-        y_predictions, _ = theano.scan(
-            fn=lambda idx, x_in, x_out: x_in[idx, :].dot(x_out.T),
-            sequences=TT.arange(n_pairs),
-            outputs_info=None,
-            non_sequences=[xIn, xOut],
-        )
+        y_predictions = TT.sum(xIn * xOut, axis=1)
+        # y_predictions, _ = theano.scan(
+        #     fn=lambda idx, x_in, x_out: x_in[idx, :].dot(x_out.T),
+        #     sequences=TT.arange(n_pairs),
+        #     outputs_info=None,
+        #     non_sequences=[xIn, xOut],
+        # )
 
         fy = (y / y_max) ** alpha
 
