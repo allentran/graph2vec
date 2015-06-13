@@ -43,7 +43,7 @@ class Node2Vec(object):
         self.data = np.array(self.data).astype(np.float32)
         self.from_to_idxs = np.array(self.from_to_idxs).astype(np.int32)
 
-    def fit(self, max_epochs=100, seed=1692):
+    def fit(self, max_epochs=100, batch_size=100000, seed=1692):
         self.model = NodeVectorModel(
             ne=self.n,
             de=self.dimensions
@@ -52,15 +52,15 @@ class Node2Vec(object):
         for epoch_idx in xrange(max_epochs):
 
             random.seed(seed)
-            random.shuffle(self.data)
-            random.seed(seed)
             random.shuffle(self.from_to_idxs)
+            random.seed(seed)
+            random.shuffle(self.data)
+
             seed = random.randint(0, 1e5)
 
-            for obs_idx in xrange(self.n):
-                print obs_idx
-                self.model.train(self.from_to_idxs[obs_idx, None], self.data[obs_idx, None], 0.05)
-                self.model.normalize()
+            for obs_idx in xrange(0, self.n, batch_size):
+                self.model.train(self.from_to_idxs[obs_idx:obs_idx+batch_size], self.data[obs_idx:obs_idx+batch_size], 0.05)
+                self.model.normalize(self.from_to_idxs[obs_idx:obs_idx+batch_size])
             print self.model.calculate_cost(self.from_to_idxs, self.data)
 
 if __name__ == "__main__":

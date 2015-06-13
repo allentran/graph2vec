@@ -35,7 +35,7 @@ class NodeVectorModel(object):
 
         # cost and gradients and learning rate
         learning_rate = TT.scalar('lr')
-        loss = TT.mean(fy * TT.square(y_predictions - TT.log(y)))
+        loss = TT.mean(fy * TT.square(y_predictions - TT.log(1 + y)))
         gradients = TT.grad(loss, [xIn, xOut])
 
         updates = [
@@ -54,9 +54,15 @@ class NodeVectorModel(object):
         )
 
         self.normalize = theano.function(
-            inputs=[],
+            inputs=[idxs],
             updates=[
-                (self.Win, self.Win / TT.sqrt((self.Win ** 2).sum(axis=1)).dimshuffle(0, 'x')),
-                (self.Wout, self.Wout / TT.sqrt((self.Wout ** 2).sum(axis=1)).dimshuffle(0, 'x')),
+                (
+                    self.Win,
+                    TT.set_subtensor(self.Win[idxs[:, 0]], self.Win[idxs[:, 0]] / TT.sqrt((self.Win[idxs[:, 0]] ** 2).sum(axis=1)).dimshuffle(0, 'x'))
+                ),
+                (
+                    self.Wout,
+                    TT.set_subtensor(self.Wout[idxs[:, 1]], self.Wout[idxs[:, 1]] / TT.sqrt((self.Wout[idxs[:, 1]] ** 2).sum(axis=1)).dimshuffle(0, 'x'))
+                )
                 ]
         )
