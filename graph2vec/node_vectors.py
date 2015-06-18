@@ -1,5 +1,7 @@
 __author__ = 'porky-chu'
 
+import cPickle
+
 import theano
 import numpy as np
 from theano import tensor as TT
@@ -36,8 +38,8 @@ class NodeVectorModel(object):
         gradients = TT.grad(loss, [xIn, xOut])
 
         updates = [
-            (self.cumulative_gradients_in, TT.inc_subtensor(self.cumulative_gradients_in[idxs[:, 0]], TT.sqr(gradients[0]))),
-            (self.cumulative_gradients_out, TT.inc_subtensor(self.cumulative_gradients_in[idxs[:, 1]], TT.sqr(gradients[1]))),
+            (self.cumulative_gradients_in, TT.inc_subtensor(self.cumulative_gradients_in[idxs[:, 0]], gradients[0] ** 2)),
+            (self.cumulative_gradients_out, TT.inc_subtensor(self.cumulative_gradients_out[idxs[:, 1]], gradients[1] ** 2)),
         ]
 
         # theano functions
@@ -67,7 +69,19 @@ class NodeVectorModel(object):
         self.update_params = theano.function(
             inputs=[idxs, y],
             updates=[
-                (self.Win, TT.inc_subtensor(self.Win[idxs[:, 0]], - (1 / TT.sqrt(self.cumulative_gradients_in[idxs[:, 0]])) * gradients[0])),
-                (self.Wout, TT.inc_subtensor(self.Wout[idxs[:, 1]], - (1 / TT.sqrt(self.cumulative_gradients_out[idxs[:, 1]])) * gradients[1])),
+                (self.Win, TT.inc_subtensor(self.Win[idxs[:, 0]], - (0.5 / TT.sqrt(self.cumulative_gradients_in[idxs[:, 0]])) * gradients[0])),
+                (self.Wout, TT.inc_subtensor(self.Wout[idxs[:, 1]], - (0.5 / TT.sqrt(self.cumulative_gradients_out[idxs[:, 1]])) * gradients[1])),
             ]
         )
+
+    def __getstate__(self):
+        return self.Win, self.Wout
+
+    def __setstate__(self, state):
+        Win, Wout = state
+        self.Win = Win
+        self.Wout = Wout
+
+    def save_to_file(self, output_path):
+        with open(output_path, 'wb') as output_file:
+            cPickle.dump(self, output_file, cPickle.HIGHEST_PROTOCOL)
