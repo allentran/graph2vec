@@ -1,5 +1,8 @@
 __author__ = 'allentran'
 
+import json
+import os
+
 import numpy as np
 
 class Graph(object):
@@ -14,11 +17,12 @@ class Graph(object):
         self._load_graph(graph_path=graph_path)
         self._create_mappings()
 
-    # def _update_get_index(self, key):
-    #
-    #     if key not in self.nodes_mapping:
-    #         self.nodes_mapping[key] = len(self.nodes_mapping)
-    #     return self.nodes_mapping[key]
+    def save_mappings(self, output_dir):
+
+        with open(os.path.join(output_dir, 'from.map'), 'w') as from_map_file:
+            json.dump(self.from_nodes_mapping, from_map_file)
+        with open(os.path.join(output_dir, 'to.map'), 'w') as to_map_file:
+            json.dump(self.to_nodes_mapping, to_map_file)
 
     def get_mappings(self):
         return self.from_nodes_mapping, self.to_nodes_mapping
@@ -82,7 +86,7 @@ class Graph(object):
         from_to_idxs = []
         degrees = []
 
-        for node in self.from_nodes_mapping.keys():
+        for node in self.from_nodes_mapping.keys()[:10000]:
             connected_nodes = _get_connected_nodes(node_idx=node, current_depth=1)
             for other_node, degree in connected_nodes.iteritems():
                 from_to_idxs.append([self.from_nodes_mapping[node], self.to_nodes_mapping[other_node]])
