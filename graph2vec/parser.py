@@ -2,8 +2,33 @@ __author__ = 'allentran'
 
 import json
 import os
+import multiprocessing
 
 import numpy as np
+
+def _update_min_dict(candidate_node, depth, min_set):
+    if candidate_node in min_set:
+        if min_set[candidate_node] <= depth:
+            return
+        else:
+            min_set[candidate_node] = depth
+    else:
+        min_set[candidate_node] = depth
+
+def _get_connected_nodes((node_idx, adjancency_list, max_degree), current_depth=1):
+    connected_dict = {}
+    single_degree_nodes = [other_idx for other_idx in adjancency_list[node_idx] if adjancency_list[node_idx][other_idx] == 1]
+    for other_idx in single_degree_nodes:
+        _update_min_dict(other_idx, current_depth, connected_dict)
+
+    if current_depth <= max_degree:
+        for other_node_idx in single_degree_nodes:
+            if other_node_idx in adjancency_list:
+                new_connected_nodes = _get_connected_nodes((other_node_idx, adjancency_list, max_degree), current_depth + 1)
+                if new_connected_nodes is not None:
+                    for other_idx, depth in new_connected_nodes.iteritems():
+                        _update_min_dict(other_idx, depth, connected_dict)
+        return connected_dict
 
 class Graph(object):
 
@@ -57,39 +82,23 @@ class Graph(object):
                     else:
                         self._add_edge(from_idx, to_idx)
 
-    def extend_graph(self, max_degree):
+    def extend_graph(self, max_degree, penalty=2):
 
-        def _update_min_dict(candidate_node, depth, min_set):
-            if candidate_node in min_set:
-                if min_set[candidate_node] <= depth:
-                    return
-                else:
-                    min_set[candidate_node] = depth
-            else:
-                min_set[candidate_node] = depth
-
-        def _get_connected_nodes(node_idx, current_depth):
-            connected_dict = {}
-            single_degree_nodes = [other_idx for other_idx in self.edge_dict[node_idx] if self.edge_dict[node_idx][other_idx] == 1]
-            for other_idx in single_degree_nodes:
-                _update_min_dict(other_idx, current_depth, connected_dict)
-
-            if current_depth <= max_degree:
-                for other_node_idx in single_degree_nodes:
-                    if other_node_idx in self.edge_dict:
-                        new_connected_nodes = _get_connected_nodes(other_node_idx, current_depth + 1)
-                        if new_connected_nodes is not None:
-                            for other_idx, depth in new_connected_nodes.iteritems():
-                                _update_min_dict(other_idx, depth, connected_dict)
-                return connected_dict
+        def _zip_args_for_parallel_fn():
+            for key in self.from_nodes_mapping.keys():
+                yield (key, self.edge_dict, max_degree)
 
         from_to_idxs = []
         degrees = []
 
-        for node in self.from_nodes_mapping.keys()[:10000]:
-            connected_nodes = _get_connected_nodes(node_idx=node, current_depth=1)
+        pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        connected_nodes_list = pool.map(_get_connected_nodes, _zip_args_for_parallel_fn())
+        pool.close()
+        pool.join()
+
+        for node_idx, connected_nodes in zip(self.from_nodes_mapping.keys(), connected_nodes_list):
             for other_node, degree in connected_nodes.iteritems():
-                from_to_idxs.append([self.from_nodes_mapping[node], self.to_nodes_mapping[other_node]])
-                degrees.append(float(1)/degree)
+                from_to_idxs.append([self.from_nodes_mapping[node_idx], self.to_nodes_mapping[other_node]])
+                degrees.append(float(1)/(degree ** penalty))
 
         return np.array(from_to_idxs).astype(np.int32), np.array(degrees).astype(np.float32)

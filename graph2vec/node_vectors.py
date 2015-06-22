@@ -27,11 +27,14 @@ class NodeVectorModel(object):
         xIn = self.Win[idxs[:, 0], :]
         xOut = self.Wout[idxs[:, 1], :]
 
+        x_in_norm = TT.sqrt((xIn ** 2).sum(axis=1))
+        x_out_norm = TT.sqrt((xOut ** 2).sum(axis=1))
+
         y = TT.vector('y')  # label
-        y_predictions = TT.sum(xIn * xOut, axis=1)
+        y_predictions = TT.sum(xIn * xOut, axis=1) / (x_in_norm * x_out_norm)
 
         # cost and gradients and learning rate
-        loss = TT.mean(TT.sqr(y_predictions - y))
+        loss = TT.mean(TT.sqr(y_predictions - TT.log(1 + y)))
         gradients = TT.grad(loss, [xIn, xOut])
 
         updates = [
@@ -40,6 +43,7 @@ class NodeVectorModel(object):
         ]
 
         # theano functions
+        self.calculate_loss = theano.function(inputs=[idxs, y], outputs=loss)
         self.classify = theano.function(inputs=[idxs], outputs=y_predictions)
         self.train = theano.function(
             inputs=[idxs, y],
