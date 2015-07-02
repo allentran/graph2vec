@@ -14,27 +14,28 @@ class NodeVectorModel(object):
         n_to :: number of to embeddings in the vocabulary
         de :: dimension of the word embeddings
         """
+        with open('data/case_embeddings.pkl', 'rb') as f:
+            temp = cPickle.load(f)
         # parameters of the model
         np.random.seed(seed)
-        self.Win = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_from, de)).astype(theano.config.floatX))
-        self.Wout = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_to, de)).astype(theano.config.floatX))
+        self.Win = theano.shared(temp.Win.get_value().astype(theano.config.floatX))
+        self.Wout = theano.shared(temp.Wout.get_value().astype(theano.config.floatX))
+        # self.Win = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_from, de)).astype(theano.config.floatX))
+        # self.Wout = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_to, de)).astype(theano.config.floatX))
 
         # adagrad
-        self.cumulative_gradients_in = theano.shared(np.zeros((n_from, de)).astype(theano.config.floatX))
-        self.cumulative_gradients_out = theano.shared(np.zeros((n_to, de)).astype(theano.config.floatX))
+        self.cumulative_gradients_in = theano.shared(0.1 * np.ones((n_from, de)).astype(theano.config.floatX))
+        self.cumulative_gradients_out = theano.shared(0.1 * np.ones((n_to, de)).astype(theano.config.floatX))
 
         idxs = TT.imatrix()
         xIn = self.Win[idxs[:, 0], :]
         xOut = self.Wout[idxs[:, 1], :]
 
-        x_in_norm = TT.sqrt((xIn ** 2).sum(axis=1))
-        x_out_norm = TT.sqrt((xOut ** 2).sum(axis=1))
-
         y = TT.vector('y')  # label
-        y_predictions = TT.sum(xIn * xOut, axis=1) / (x_in_norm * x_out_norm)
+        y_predictions = TT.sum(xIn * xOut, axis=1)
 
         # cost and gradients and learning rate
-        loss = TT.mean(TT.sqr(y_predictions - TT.log(1 + y)))
+        loss = TT.mean(TT.sqr(y_predictions - y))
         gradients = TT.grad(loss, [xIn, xOut])
 
         updates = [
