@@ -11,6 +11,7 @@ if __name__ == '__main__':
         author='Allen Tran',
         author_email='realallentran@gmail.com',
         description='meaningful vector representations of nodes',
+        url='https://github.com/allentran/graph2vec',
         packages=find_packages(),
         classifiers=[
             'Development Status :: 4 - Beta',
