@@ -75,9 +75,6 @@ class Graph2Vec(object):
             for obs_idx in xrange(0, len(self.inverse_degrees), batch_size):
                 cost.append(self.model.train(self.from_to_idxs[shuffled_idxes[obs_idx:obs_idx + batch_size]],
                                           self.inverse_degrees[shuffled_idxes[obs_idx:obs_idx + batch_size]]))
-                self.model.update_params(self.from_to_idxs[shuffled_idxes[obs_idx:obs_idx + batch_size]],
-                                         self.inverse_degrees[shuffled_idxes[obs_idx:obs_idx + batch_size]])
-                self.model.normalize(self.from_to_idxs[shuffled_idxes[obs_idx:obs_idx + batch_size]])
 
             cost = np.mean(cost)
             logging.info('After %s epochs, cost=%s' % (epoch_idx, cost ** 0.5))

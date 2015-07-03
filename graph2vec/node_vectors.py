@@ -31,8 +31,12 @@ class NodeVectorModel(object):
         xIn = self.Win[idxs[:, 0], :]
         xOut = self.Wout[idxs[:, 1], :]
 
+        norms_in= TT.sqrt(TT.sum(xIn ** 2, axis=1))
+        norms_out = TT.sqrt(TT.sum(xOut ** 2, axis=1))
+        norms = norms_in * norms_out
+
         y = TT.vector('y')  # label
-        y_predictions = TT.sum(xIn * xOut, axis=1)
+        y_predictions = TT.sum(xIn * xOut, axis=1) / norms
 
         # cost and gradients and learning rate
         loss = TT.mean(TT.sqr(y_predictions - y))
@@ -41,6 +45,8 @@ class NodeVectorModel(object):
         updates = [
             (self.cumulative_gradients_in, TT.inc_subtensor(self.cumulative_gradients_in[idxs[:, 0]], gradients[0] ** 2)),
             (self.cumulative_gradients_out, TT.inc_subtensor(self.cumulative_gradients_out[idxs[:, 1]], gradients[1] ** 2)),
+            (self.Win, TT.inc_subtensor(self.Win[idxs[:, 0]], - (0.5 / TT.sqrt(self.cumulative_gradients_in[idxs[:, 0]])) * gradients[0])),
+            (self.Wout, TT.inc_subtensor(self.Wout[idxs[:, 1]], - (0.5 / TT.sqrt(self.cumulative_gradients_out[idxs[:, 1]])) * gradients[1])),
         ]
 
         # theano functions
@@ -51,28 +57,6 @@ class NodeVectorModel(object):
             outputs=loss,
             updates=updates,
             name='training_fn'
-        )
-
-        self.normalize = theano.function(
-            inputs=[idxs],
-            updates=[
-                (
-                    self.Win,
-                    TT.set_subtensor(self.Win[idxs[:, 0]], self.Win[idxs[:, 0]] / TT.sqrt((self.Win[idxs[:, 0]] ** 2).sum(axis=1)).dimshuffle(0, 'x'))
-                ),
-                (
-                    self.Wout,
-                    TT.set_subtensor(self.Wout[idxs[:, 1]], self.Wout[idxs[:, 1]] / TT.sqrt((self.Wout[idxs[:, 1]] ** 2).sum(axis=1)).dimshuffle(0, 'x'))
-                )
-                ]
-        )
-
-        self.update_params = theano.function(
-            inputs=[idxs, y],
-            updates=[
-                (self.Win, TT.inc_subtensor(self.Win[idxs[:, 0]], - (0.5 / TT.sqrt(self.cumulative_gradients_in[idxs[:, 0]])) * gradients[0])),
-                (self.Wout, TT.inc_subtensor(self.Wout[idxs[:, 1]], - (0.5 / TT.sqrt(self.cumulative_gradients_out[idxs[:, 1]])) * gradients[1])),
-            ]
         )
 
     def __getstate__(self):
