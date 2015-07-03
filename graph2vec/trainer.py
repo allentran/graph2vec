@@ -11,7 +11,7 @@ import parser
 
 
 class Graph2Vec(object):
-    def __init__(self, vector_dimensions, output_dir):
+    def __init__(self, vector_dimensions, output_dir='data'):
 
         self.output_dir = output_dir
 
@@ -22,12 +22,12 @@ class Graph2Vec(object):
         self.from_to_idxs = None
         self.inverse_degrees = None
 
-    def parse_graph(self, graph_path, data_dir='data', load_mmap=False):
+    def parse_graph(self, graph_path, data_dir='data', load_edges=False, extend_paths=2):
         graph = parser.Graph(graph_path)
         self.from_nodes, self.to_nodes = graph.get_mappings()
         graph.save_mappings(self.output_dir)
 
-        if load_mmap:
+        if load_edges:
             self.inverse_degrees = np.memmap(
                 os.path.join(data_dir, 'inverse_degrees.mat'),
                 mode='r',
@@ -40,7 +40,7 @@ class Graph2Vec(object):
             )
             self.from_to_idxs = np.reshape(self.from_to_idxs, newshape=(self.inverse_degrees.shape[0], 2))
         else:
-            from_to_idxs, inverse_degrees = graph.extend_graph(max_degree=2)
+            from_to_idxs, inverse_degrees = graph.extend_graph(max_degree=extend_paths)
             self.from_to_idxs = np.memmap(
                 os.path.join(data_dir, 'from_to.mat'),
                 mode='r+',
@@ -83,8 +83,8 @@ class Graph2Vec(object):
             logging.info('After %s epochs, cost=%s' % (epoch_idx, cost ** 0.5))
 
 def main():
-    node2vec = Graph2Vec(vector_dimensions=128, output_dir='data')
-    node2vec.parse_graph('data/edge.list', load_mmap=True)
+    node2vec = Graph2Vec(vector_dimensions=128)
+    node2vec.parse_graph('data/edge.list', load_edges=True)
     node2vec.fit()
     node2vec.model.save_to_file("data/case_embeddings.pkl")
 
