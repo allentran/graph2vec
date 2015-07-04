@@ -8,39 +8,41 @@ from theano import tensor as TT
 
 
 class NodeVectorModel(object):
-    def __init__(self, n_from, n_to, de, seed=1692):
+    def __init__(self, n_from, n_to, de, seed=1692, init_params=None):
         """
         n_from :: number of from embeddings in the vocabulary
         n_to :: number of to embeddings in the vocabulary
         de :: dimension of the word embeddings
         """
-        with open('data/case_embeddings.pkl', 'rb') as f:
-            temp = cPickle.load(f)
-        # parameters of the model
         np.random.seed(seed)
-        self.Win = theano.shared(temp.Win.get_value().astype(theano.config.floatX))
-        self.Wout = theano.shared(temp.Wout.get_value().astype(theano.config.floatX))
-        # self.Win = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_from, de)).astype(theano.config.floatX))
-        # self.Wout = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_to, de)).astype(theano.config.floatX))
+        # parameters of the model
+        if init_params is not None:
+            with open('data/case_embeddings.pkl', 'rb') as f:
+                temp = cPickle.load(f)
+            self.Win = theano.shared(temp.Win.get_value().astype(theano.config.floatX))
+            self.Wout = theano.shared(temp.Wout.get_value().astype(theano.config.floatX))
+        else:
+            self.Win = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_from, de)).astype(theano.config.floatX))
+            self.Wout = theano.shared(0.2 * np.random.uniform(-1.0, 1.0, (n_to, de)).astype(theano.config.floatX))
 
         # adagrad
         self.cumulative_gradients_in = theano.shared(0.1 * np.ones((n_from, de)).astype(theano.config.floatX))
         self.cumulative_gradients_out = theano.shared(0.1 * np.ones((n_to, de)).astype(theano.config.floatX))
 
         idxs = TT.imatrix()
-        xIn = self.Win[idxs[:, 0], :]
-        xOut = self.Wout[idxs[:, 1], :]
+        x_in = self.Win[idxs[:, 0], :]
+        x_out = self.Wout[idxs[:, 1], :]
 
-        norms_in= TT.sqrt(TT.sum(xIn ** 2, axis=1))
-        norms_out = TT.sqrt(TT.sum(xOut ** 2, axis=1))
+        norms_in= TT.sqrt(TT.sum(x_in ** 2, axis=1))
+        norms_out = TT.sqrt(TT.sum(x_out ** 2, axis=1))
         norms = norms_in * norms_out
 
         y = TT.vector('y')  # label
-        y_predictions = TT.sum(xIn * xOut, axis=1) / norms
+        y_predictions = TT.sum(x_in * x_out, axis=1) / norms
 
         # cost and gradients and learning rate
         loss = TT.mean(TT.sqr(y_predictions - y))
-        gradients = TT.grad(loss, [xIn, xOut])
+        gradients = TT.grad(loss, [x_in, x_out])
 
         updates = [
             (self.cumulative_gradients_in, TT.inc_subtensor(self.cumulative_gradients_in[idxs[:, 0]], gradients[0] ** 2)),

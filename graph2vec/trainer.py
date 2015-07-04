@@ -57,12 +57,13 @@ class Graph2Vec(object):
             self.inverse_degrees[:] = inverse_degrees[:]
 
 
-    def fit(self, max_epochs=100, batch_size=1000, seed=1692):
+    def fit(self, max_epochs=100, batch_size=1000, seed=1692, params=None):
 
         self.model = NodeVectorModel(
             n_from=len(self.from_nodes),
             n_to=len(self.to_nodes),
-            de=self.dimensions
+            de=self.dimensions,
+            init_params=params,
         )
 
         random.seed(seed)
@@ -82,7 +83,7 @@ class Graph2Vec(object):
 def main():
     node2vec = Graph2Vec(vector_dimensions=128)
     node2vec.parse_graph('data/edge.list', load_edges=True)
-    node2vec.fit()
+    node2vec.fit("data/case_embeddings.pkl")
     node2vec.model.save_to_file("data/case_embeddings.pkl")
 
 if __name__ == "__main__":
