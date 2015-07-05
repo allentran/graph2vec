@@ -27,5 +27,9 @@ The `extend_paths` argument dictates the length of paths included in the cost fu
 ```
 graph2vec.fit(batch_size=1000, max_epochs=1000)
 ```
-Don't go too crazy with the batch size, you'll get a speed up but convergence will be erratic.
+Don't go too crazy with the batch size, you'll get a speed up but convergence will be erratic. The vectors, both as origin and destination nodes are stored in the model object.
+```
+graph2vec.model.Win.get_value()
+graph2vec.model.Wout.get_value()
+```
 
